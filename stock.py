@@ -52,7 +52,7 @@ def pre_process(basedir, dirs, outdir):
 def main():
     basedir = "./raw/"
     outdir = "./data/"
-    dirs = ['2007', '2008']
+    dirs = ['2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008']
     pre_process(basedir, dirs, outdir)
 
 

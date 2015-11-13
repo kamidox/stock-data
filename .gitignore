@@ -61,4 +61,5 @@ docs/_build/
 *.jpg
 .idea
 
+.ipynb_checkpoints
 raw
