@@ -63,3 +63,4 @@ docs/_build/
 
 .ipynb_checkpoints
 raw
+test-data
