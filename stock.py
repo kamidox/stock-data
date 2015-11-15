@@ -35,7 +35,12 @@ BLACK_LIST = [
 ]
 
 
-def to_day_data(iname, oname, append=True):
+# 股票涨跌幅检查，不能超过 10% ，过滤掉一些不合法的数据
+def _valid_price(g):
+    return (((g.max() - g.min()) / g.min()) < 0.223).all()
+
+
+def minutes_to_days(iname, oname, mode='a'):
     """ convert 5 minutes stock data to day stock data """
 
     if not os.path.isfile(iname):
@@ -49,21 +54,28 @@ def to_day_data(iname, oname, append=True):
              'closing_price',
              'volume',
              'amount']
-    raw = pd.read_csv(iname, names=names, header=None).replace(0, np.nan).dropna()
-    day = raw.groupby('date').agg(
-        {'opening_price': 'first',
-         'ceiling_price': 'max',
-         'floor_price': 'min',
-         'closing_price': 'last',
+    raw = pd.read_csv(iname, names=names, header=None, index_col='date', parse_dates=True)
+
+    days = raw.groupby(level=0).agg(
+        {'opening_price': lambda g: _valid_price(g) and g[0] or 0,
+         'ceiling_price': lambda g: _valid_price(g) and np.max(g) or 0,
+         'floor_price': lambda g: _valid_price(g) and np.min(g) or 0,
+         'closing_price': lambda g: _valid_price(g) and g[-1] or 0,
          'volume': 'sum',
          'amount': 'sum'})
-    print('append %d items from %s to %s' % (len(day), iname, oname))
+    days = days.replace(0, np.nan).dropna()
+    print('append %d items from %s to %s' % (len(days), iname, oname))
     exists = os.path.exists(oname)
-    day.to_csv(oname, mode=(append and 'a' or 'w'), header=((not append) or (not exists)))
+    days.to_csv(oname, mode=mode, header=(mode == 'w' or (not exists)))
 
 
-def pre_process(basedir, dirs, outdir):
-    """ pre-process data. Convert 5 minutes stock data, 1 minutes """
+def minutes_to_days_batch(basedir='raw',
+                          outdir='data',
+                          dirs=['2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008']):
+    """ Convert 5 minutes stock data, 1 minutes to day data in batch mode
+
+        This will read all stock data under basedir, convert it into outdir
+    """
 
     if not os.path.isdir(basedir) or not os.path.exists(basedir):
         print('error: input directory not exist. %s' % basedir)
@@ -78,15 +90,7 @@ def pre_process(basedir, dirs, outdir):
         for f in files:
             oname = os.path.join(outdir, os.path.split(f)[1])
             f = os.path.join(d, f)
-            to_day_data(f, oname)
-
-
-def convert_to_daily_data():
-    """ convert all 5 minutes data to daily data """
-    basedir = "./raw/"
-    outdir = "./data/"
-    dirs = ['2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008']
-    pre_process(basedir, dirs, outdir)
+            minutes_to_days(f, oname)
 
 
 def get_stock_ripples(data_file, period=20):
@@ -123,24 +127,8 @@ def get_stock_ripples(data_file, period=20):
         id_of_ceiling_price = group['floor_price'].idxmax()
         return id_of_ceiling_price > id_of_floor_price
 
-    def _check_for_invalid_data(x):
-        # 检查是否有包含 0 的数据
-        if x.ceiling_price == 0 or x.floor_price == 0 or x.opening_price == 0 or x.closing_price == 0:
-            invalid_date.append(x.date)
-            return
-        # 检查是否超出涨停限制
-        if x.ceiling_price / x.floor_price > 1.23 or x.floor_price / x.ceiling_price > 1.23:
-            invalid_date.append(x.date)
-            return
-        if x.opening_price / x.closing_price > 1.12 or x.closing_price / x.opening_price > 1.1:
-            invalid_date.append(x.date)
-            return
-
     try:
         data = pd.read_csv(data_file)
-        invalid_date = []
-        data.apply(_check_for_invalid_data, axis=1)
-        data = data[~data.date.isin(invalid_date)]
     except Exception, e:
         print('error: failed to read csv from %s' % data_file)
         print(e)
@@ -190,11 +178,21 @@ def get_all_ripples(basedir='data', period=20, mean_num=10):
     return all_ripples
 
 
+def ripple_raw_data(stock_file, ripple_idx=0, days=30):
+    ripple = get_stock_ripples(stock_file)
+    date = ripple.iloc[ripple_idx].date
+    date_start = pd.Timestamp(date)
+    date_end = date_start + pd.Timedelta(days=days)
+
+    days_data = pd.read_csv(stock_file, index_col='date', parse_dates=True)
+    return days_data[date_start:date_end]
+
+
 def main():
     print("Please refer to stock.ipynb. You need ipython notebook to run stock.ipynb.")
-    # convert_to_daily_data()
+    minutes_to_days_batch(basedir='test-raw', outdir='test-data')
     # print('mean ripples range: %.04f' % get_stock_ripples('data/SH600690.csv', 20))
-    ripples = get_all_ripples(basedir='data', period=20)
+    ripples = get_all_ripples(basedir='test-data', period=20)
     ripples.to_csv('ripples.csv', index=False)
 
 
