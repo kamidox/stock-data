@@ -278,11 +278,11 @@ def row_data(stock_file, end_date=None, period=30):
 
 def main():
     print("Please refer to stock.ipynb. You need ipython notebook to run stock.ipynb.")
-    # minutes_to_days_batch(basedir='test-raw', outdir='test-data')
+    # minutes_to_days_batch(basedir='raw', outdir='data', dirs=['2004', '2005', '2006', '2007', '2008'])
     # print('mean ripples range: %.04f' % stock_ripples('data/SH600690.csv', 20))
     # ripples = stock_ripples_batch(basedir='test-data', period=30)
     # ripples.to_csv('ripples.csv', index=False)
-    recent_ripples(basedir='test-data', end_date='2007-11-30', period=30)
+    # recent_ripples(basedir='test-data', end_date='2007-11-30', period=30)
 
 
 if __name__ == '__main__':
