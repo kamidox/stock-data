@@ -3,6 +3,7 @@ import urllib
 import os
 import datetime
 import pandas as pd
+import numpy as np
 
 
 def retrive_stock_data(stockid, folder):
@@ -50,3 +51,33 @@ def update_stock_data(stockid, folder):
     data.sort_index(ascending=False, inplace=True)
     data.to_csv(fname, mode='w')
     os.unlink(temp_file)
+
+
+def stock_list(files, postfixs):
+    """ 合并股票列表，输出合并后的，可以通过 yahoo api 获取的股票列表
+
+    files: a sequence like ['SH.txt', 'SZ.txt']
+    postfixs: a sequence map to files, like ['.ss', '.sz']
+    """
+    if len(files) != len(postfixs):
+        print('error: size of files and postfixs not match.')
+        return
+
+    stocks = []
+    for i in range(len(files)):
+        data = pd.read_csv(files[i], header=None, names=['name', 'id'], dtype={'id': np.string0})
+        data['postfix'] = postfixs[i]
+        stocks.append(data)
+
+    data = pd.concat(stocks)
+    print('%d files. %d stocks.' % (len(files), len(data)))
+    return data
+
+
+def update_stock_data_batch():
+    """ 批量更新所有股票数据 """
+
+    slist = stock_list(['SH.txt', 'SZ.txt'], ['.ss', '.sz'])
+    for i in range(len(slist)):
+        s = slist.iloc[i]
+        update_stock_data(s['id'] + s['postfix'], 'yahoo-data')
