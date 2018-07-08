@@ -145,7 +145,7 @@ def stock_ripples(data_file, period=30):
     zvalues = data.loc[~(data.volume > 0)].loc[:, ['volume', 'amount']]
     # fill data
     data.update(zvalues.fillna(0))
-    data.fillna(method='ffill', inplace=True)
+	data.fillna(method='ffill', inplace=True)
 
     group_index = _gen_item_group_index(len(data), period)
     data['group_index'] = group_index
